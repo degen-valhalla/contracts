@@ -1,0 +1,19 @@
+# node
+node_modules
+
+# hardhat
+abi
+artifacts
+cache
+deployments
+# security
+.secret
+
+# remix
+contracts/.deps
+.env
+.env.test
+typechain-types
+coverage
+coverage.json
+scripts/botsetting
