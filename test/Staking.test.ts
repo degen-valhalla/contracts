@@ -11,7 +11,9 @@ import {
   TestToken__factory,
 } from '../typechain-types'
 
-const COUPON_PER_SECOND = parseEther('4') / 1000n
+const VAI_COUPON_PER_SECOND = parseEther('4') / 1000n
+const XVS_COUPON_PER_SECOND = parseEther('2') / 1000n
+const VTOKEN_COUPON_PER_SECOND = parseEther('2') / 1000n
 
 describe('Staking', () => {
   let admin: Signer
@@ -39,7 +41,7 @@ describe('Staking', () => {
     const params = ['aCoupon', 'aCoupon', 'https://aCoupon/', await admin.getAddress(), [5, 15]]
     aCoupon = (await upgrades.deployProxy(new ACoupon__factory(admin), params)) as unknown as ACoupon
 
-    stakingPool = await new StakingPool__factory(admin).deploy(aCoupon, COUPON_PER_SECOND, startTimestamp)
+    stakingPool = await new StakingPool__factory(admin).deploy(aCoupon, startTimestamp)
 
     await aCoupon.setOperator(stakingPool, true)
 
@@ -47,9 +49,9 @@ describe('Staking', () => {
     xvs = await new TestToken__factory(admin).deploy(parseEther('1000000'))
     vToken = await new TestToken__factory(admin).deploy(parseEther('1000000'))
 
-    await stakingPool.add(1000, vai, true)
-    await stakingPool.add(500, xvs, true)
-    await stakingPool.add(500, vToken, true)
+    await stakingPool.add(vai, VAI_COUPON_PER_SECOND, 1, true)
+    await stakingPool.add(xvs, XVS_COUPON_PER_SECOND, 2, true)
+    await stakingPool.add(vToken, VTOKEN_COUPON_PER_SECOND, 3, true)
 
     const tokens = [vai, xvs, vToken]
     for (const token of tokens) {
@@ -70,22 +72,22 @@ describe('Staking', () => {
     await time.increase(500)
 
     const pending = await stakingPool['pendingCoupon(address)'](alice)
-    expect(pending).eq(0)
+    expect(pending[0][2]).eq(0)
   })
 
   it('alice get reward', async () => {
     await time.increaseTo(startTimestamp + 1000)
 
     let pending = await stakingPool['pendingCoupon(address)'](alice)
-    expect(pending).eq(parseEther('2'))
+    expect(pending[0][2]).eq(parseEther('4'))
 
     const tx = stakingPool.connect(alice).getReward(true)
     await expect(tx)
-      .emit(stakingPool, 'GetReward')
-      .withArgs(await alice.getAddress(), 2)
+      .emit(stakingPool, 'GetCoupon')
+      .withArgs(await alice.getAddress(), 1, 4)
 
     const balance = await aCoupon.balanceOf(alice, 1)
-    expect(balance).eq(2)
+    expect(balance).eq(4)
   })
 
   it('alice withdraw', async () => {
@@ -126,10 +128,14 @@ describe('Staking', () => {
   })
 
   it('users get coupon', async () => {
-    await time.increase(1000 * 10 + 20)
+    const passedTime = 1000n * 10n
+    await time.increase(passedTime + 20n)
 
-    const totalRewards = 4n * 10n * parseEther('1')
-    const poolRewards = [totalRewards / 2n, totalRewards / 4n, totalRewards / 4n]
+    const poolRewards = [
+      VAI_COUPON_PER_SECOND * passedTime,
+      XVS_COUPON_PER_SECOND * passedTime,
+      VTOKEN_COUPON_PER_SECOND * passedTime,
+    ]
     const userRewards = [0, 1].map((userIndex) =>
       poolRewards.map(
         (reward, pid) =>
@@ -141,11 +147,19 @@ describe('Staking', () => {
     // console.log(userRewards)
     await stakingPool.connect(alice).getReward(true)
     let balance = await aCoupon.balanceOf(alice, 1)
-    expect(balance).eq(2n + userRewards[0][0] + userRewards[0][1] + userRewards[0][2])
+    expect(balance).eq(4n + userRewards[0][0])
+    balance = await aCoupon.balanceOf(alice, 2)
+    expect(balance).eq(userRewards[0][1])
+    balance = await aCoupon.balanceOf(alice, 3)
+    expect(balance).eq(userRewards[0][2])
 
     await stakingPool.connect(david).getReward(true)
     balance = await aCoupon.balanceOf(david, 1)
-    expect(balance).eq(userRewards[1][0] + userRewards[1][1] + userRewards[1][2])
+    expect(balance).eq(userRewards[1][0])
+    balance = await aCoupon.balanceOf(david, 2)
+    expect(balance).eq(userRewards[1][1])
+    balance = await aCoupon.balanceOf(david, 3)
+    expect(balance).eq(userRewards[1][2])
   })
 
   it('users withdraw', async () => {
