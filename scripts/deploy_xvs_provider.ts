@@ -1,22 +1,15 @@
 import { ethers, upgrades } from 'hardhat'
 import { parseEther } from 'ethers'
-import {
-  CouponProviderForXVS__factory,
-  CouponProviderForXVS,
-  MockXVSVault__factory,
-  ACoupon__factory,
-} from '../typechain-types'
+import { CouponProviderForXVS__factory, CouponProviderForXVS, ACoupon__factory } from '../typechain-types'
 
-const couponAddr = '0x8Ea9F030bfa6Ec8bC3cA97B4c9F74f96a4A34Be2'
-const xvsAddr = '0x8Ea9F030bfa6Ec8bC3cA97B4c9F74f96a4A34Be2'
+const couponAddr = '0x7d31688Dc47322A684BaBF3FdA9FBa7c3B6644E9'
+const xvsAddr = '0xcF6BB5389c92Bdda8a3747Ddb454cB7a64626C63'
+const vaultAddr = '0x051100480289e704d20e9DB4804837068f3f9204'
 
 const main = async () => {
   const [admin] = await ethers.getSigners()
 
-  const xvsVault = await new MockXVSVault__factory(admin).deploy()
-  console.log('MockVault:', xvsVault.target)
-
-  const params = [await admin.getAddress(), couponAddr, xvsVault.target, xvsAddr, 0]
+  const params = [await admin.getAddress(), couponAddr, vaultAddr, xvsAddr, 0]
   const provider = (await upgrades.deployProxy(
     new CouponProviderForXVS__factory(admin),
     params,
