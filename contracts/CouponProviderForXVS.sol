@@ -105,9 +105,9 @@ contract CouponProviderForXVS is OwnableUpgradeable {
             return (ids, values);
         }
         (uint256 amount, , uint256 pendingWithdrawals) = xvsVault.getUserInfo(xvs, xvsVaultPid, user);
-        for (uint256 i = length - 1; i >= 0; ) {
-            if (rewardCriteria[i].xvsAmount <= amount - pendingWithdrawals) {
-                return (rewardCriteria[i].couponIds, rewardCriteria[i].couponValues);
+        for (uint256 i = length; i >= 1; ) {
+            if (rewardCriteria[i - 1].xvsAmount <= amount - pendingWithdrawals) {
+                return (rewardCriteria[i - 1].couponIds, rewardCriteria[i - 1].couponValues);
             }
             unchecked {
                 --i;
@@ -115,5 +115,14 @@ contract CouponProviderForXVS is OwnableUpgradeable {
         }
 
         return (ids, values);
+    }
+
+    function getCriteria(uint256 index) external view returns (uint256, uint256[] memory, uint256[] memory) {
+        RewardCriteria memory criteria = rewardCriteria[index];
+        return (criteria.xvsAmount, criteria.couponIds, criteria.couponValues);
+    }
+
+    function getVaultInfo() external view returns (address, address, uint256) {
+        return (address(xvsVault), xvs, xvsVaultPid);
     }
 }

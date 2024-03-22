@@ -4,8 +4,6 @@ import '@nomicfoundation/hardhat-toolbox'
 import '@openzeppelin/hardhat-upgrades'
 import 'hardhat-contract-sizer'
 import 'hardhat-tracer'
-import fs from 'fs'
-import path from 'path'
 
 const SEPOLIA_PRIVATE_KEY = process.env.SEPOLIA_PRIVATE_KEY!
 const MAINNET_PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY!
@@ -15,24 +13,6 @@ const MAINNET_URL = process.env.MAINNET_URL
 const BSC_URL = process.env.BSC_URL
 const BSC_TESTNET_URL = process.env.BSC_TESTNET_URL
 const ETHER_SCAN_APIKEY = process.env.ETHER_SCAN_APIKEY
-
-const SKIP_LOAD = process.env.SKIP_LOAD === 'true'
-
-// Load hardhat tasks.
-if (!SKIP_LOAD) {
-  console.log('Loading scripts...')
-  const tasksDir = path.join(__dirname, 'tasks')
-  const tasksDirs = fs.readdirSync(tasksDir)
-  tasksDirs.forEach((dirName) => {
-    const tasksDirPath = path.join(tasksDir, dirName)
-    const tasksFiles = fs.readdirSync(tasksDirPath)
-    tasksFiles.forEach((fileName) => {
-      const tasksFilePath = path.join(tasksDirPath, fileName)
-      /* eslint-disable-next-line global-require */
-      require(tasksFilePath)
-    })
-  })
-}
 
 const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
