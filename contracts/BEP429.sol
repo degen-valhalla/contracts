@@ -158,8 +158,23 @@ abstract contract BEP429 is Context, IBEP429 {
         }
     }
 
-    function owned(address owner_) public view virtual returns (uint256[] memory) {
-        return _owned[owner_];
+    function owned(address owner_, uint256 start_, uint256 count_) public view virtual returns (uint256[] memory) {
+        uint256[] memory ownedIds = _owned[owner_];
+        uint256 length = ownedIds.length;
+        if (start_ > length - 1 || start_ + count_ > length) {
+            revert OutOfRange();
+        }
+
+        uint256[] memory tokenIds = new uint256[](count_);
+        for (uint256 i = start_; i < start_ + count_; ) {
+            tokenIds[i - start_] = ownedIds[i];
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        return tokenIds;
     }
 
     function getERC721QueueLength() public view virtual returns (uint256) {
@@ -167,6 +182,10 @@ abstract contract BEP429 is Context, IBEP429 {
     }
 
     function getERC721TokensInQueue(uint256 start_, uint256 count_) public view virtual returns (uint256[] memory) {
+        uint256 length = getERC721QueueLength();
+        if (start_ > length - 1 || start_ + count_ > length) {
+            revert OutOfRange();
+        }
         uint256[] memory tokensInQueue = new uint256[](count_);
 
         for (uint256 i = start_; i < start_ + count_; ) {
@@ -192,6 +211,9 @@ abstract contract BEP429 is Context, IBEP429 {
      * - the caller must have a balance of at least `value`.
      */
     function transfer(address to, uint256 value) public virtual returns (bool) {
+        if (value >= ID_ENCODING_PREFIX) {
+            revert InvalidAmount();
+        }
         address owner = _msgSender();
         _transfer(owner, to, value);
         return true;
@@ -341,6 +363,9 @@ abstract contract BEP429 is Context, IBEP429 {
 
     function convertFromNFT(uint256 numOfNFTs) external {
         address from = _msgSender();
+        if (_owned[from].length < numOfNFTs) {
+            revert NumTooBig();
+        }
         for (uint256 i = 0; i < numOfNFTs; ) {
             _withdrawAndStoreERC721(from);
             unchecked {
@@ -595,8 +620,7 @@ abstract contract BEP429 is Context, IBEP429 {
             // Otherwise, mint a new token, should not be able to go over the total fractional supply.
             ++minted;
 
-            // Reserve max uint256 for approvals
-            if (minted == type(uint256).max) {
+            if (minted == 2 ** 254 - 1) {
                 revert MintLimitReached();
             }
 

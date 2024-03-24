@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 interface IBEP429 {
     error NotFound();
     error InvalidTokenId();
+    error InvalidAmount();
     error AlreadyExists();
     error InvalidRecipient(address recipient);
     error InvalidSender(address sender);
@@ -17,6 +18,8 @@ interface IBEP429 {
     error MintLimitReached();
     error InvalidApprover(address approver);
     error InsufficientBalance(address sender, uint256 balance, uint256 needed);
+    error OutOfRange();
+    error NumTooBig();
 
     function name() external view returns (string memory);
 
@@ -40,7 +43,7 @@ interface IBEP429 {
 
     function allowance(address owner_, address spender_) external view returns (uint256);
 
-    function owned(address owner_) external view returns (uint256[] memory);
+    function owned(address owner_, uint256 start_, uint256 count_) external view returns (uint256[] memory);
 
     function ownerOf(uint256 id_) external view returns (address erc721Owner);
 
