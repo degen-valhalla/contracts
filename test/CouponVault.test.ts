@@ -77,7 +77,7 @@ describe('CouponVault', () => {
 
     const originAmountIn = (await router.getAmountsIn(tokens, [weth9, valhalla]))[0]
 
-    const txBuy = couponVault.connect(alice).buyUsingCoupon(ids, values, amountIn, alice, { value: amountIn })
+    const txBuy = couponVault.connect(alice).buyUsingCoupon(ids, values, alice, { value: amountIn })
 
     expect(amountIn).eq(amountInForDirectSwap)
     await expect(txBuy).changeTokenBalance(valhalla, alice, tokens)

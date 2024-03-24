@@ -46,7 +46,8 @@ contract Valhalla is BEP429, Ownable {
         ownerOf(tokenId);
         bool isValidForTokenId = _isValidTokenId(tokenId);
         string memory base = isValidForTokenId ? _baseTokenURI : _sbtBaseTokenURI;
-        return bytes(base).length > 0 ? string(abi.encodePacked(base, tokenId.toString())) : "";
+        tokenId = isValidForTokenId ? tokenId & (ID_ENCODING_PREFIX - 1) : tokenId % 200;
+        return bytes(base).length > 0 ? string.concat(base, tokenId.toString(), ".json") : "";
     }
 
     function _afterBurnNft(address from, uint256) internal override {

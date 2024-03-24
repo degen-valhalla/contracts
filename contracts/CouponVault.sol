@@ -24,7 +24,6 @@ contract CouponVault is Ownable, ReentrancyGuard {
     error InvalidIdInfo();
     error InsufficientCoupon();
     error InsufficientInputAmount();
-    error ExcessMaxLimit();
 
     event SwapAndLiquifyETH(uint256, uint256);
 
@@ -57,12 +56,7 @@ contract CouponVault is Ownable, ReentrancyGuard {
         IERC20(_token).transfer(_to, _amount);
     }
 
-    function buyUsingCoupon(
-        uint256[] memory ids,
-        uint256[] memory values,
-        uint256 maxAmountIn,
-        address to
-    ) external payable nonReentrant {
+    function buyUsingCoupon(uint256[] memory ids, uint256[] memory values, address to) external payable nonReentrant {
         if (ids.length == 0 || ids.length != values.length) {
             revert InvalidIdInfo();
         }
@@ -73,9 +67,6 @@ contract CouponVault is Ownable, ReentrancyGuard {
 
         if (msg.value < amountIn) {
             revert InsufficientInputAmount();
-        }
-        if (amountIn > maxAmountIn) {
-            revert ExcessMaxLimit();
         }
         if (msg.value > amountIn) {
             (bool success, ) = from.call{value: msg.value - amountIn}(new bytes(0));

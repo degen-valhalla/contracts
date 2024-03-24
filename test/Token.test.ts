@@ -199,7 +199,11 @@ describe('Valhalla', () => {
   it('alice burn nft to get SBT and coupon', async () => {
     const nftBalance = await valhalla.erc721BalanceOf(alice)
     const ids = await valhalla.owned(alice, 0, nftBalance)
-    const tokenUri = await valhalla.tokenURI(ids[0])
+    let tokenUri = await valhalla.tokenURI(ids[0])
+    console.log('Token uri:', tokenUri)
+    tokenUri = await valhalla.tokenURI(ids[1])
+    console.log('Token uri:', tokenUri)
+    tokenUri = await valhalla.tokenURI(ids[2])
     console.log('Token uri:', tokenUri)
 
     const sbtTokenId = SBT_ID_ENCODING_PREFIX + BigInt(hexlify(await alice.getAddress()))
