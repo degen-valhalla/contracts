@@ -73,7 +73,8 @@ describe('Valhalla', () => {
   })
 
   it('alice transfer nft to david', async () => {
-    const ids = await valhalla.owned(alice)
+    let nftBalance = await valhalla.erc721BalanceOf(alice)
+    const ids = await valhalla.owned(alice, 0, nftBalance)
     for (const id of ids) {
       const tx = valhalla.connect(alice).transferFrom(alice, david, id)
       await expect(tx).changeTokenBalance(valhalla, alice, 0)
@@ -84,7 +85,7 @@ describe('Valhalla', () => {
         .withArgs(await alice.getAddress(), await david.getAddress(), id)
     }
 
-    const nftBalance = await valhalla.erc721BalanceOf(alice)
+    nftBalance = await valhalla.erc721BalanceOf(alice)
     const nftBalanceOfDavid = await valhalla.erc721BalanceOf(david)
     const balanceOfDavid = await valhalla.balanceOf(david)
     expect(nftBalance).to.be.equal(0)
@@ -103,7 +104,8 @@ describe('Valhalla', () => {
   })
 
   it('david approve alice for his nft', async () => {
-    const ids = await valhalla.owned(david)
+    const nftBalance = await valhalla.erc721BalanceOf(david)
+    const ids = await valhalla.owned(david, 0, nftBalance)
 
     const tx0 = valhalla.connect(alice).transferFrom(david, alice, ids[0])
     await expect(tx0).reverted
@@ -153,7 +155,8 @@ describe('Valhalla', () => {
   it('every user convert from as many nfts as possible', async () => {
     const users = [admin, alice, david]
     for (const user of users) {
-      const ids = await valhalla.owned(user)
+      const nftBalance = await valhalla.erc721BalanceOf(user)
+      const ids = await valhalla.owned(user, 0, nftBalance)
       if (ids.length > 0n) {
         await valhalla.connect(user).convertFromNFT(ids.length)
       }
@@ -187,13 +190,15 @@ describe('Valhalla', () => {
     expect(erc20TotalSupply).equal(TOTAL_SUPPLY - num * ONE_ETH)
     expect(erc721TotalSupply).equal(num)
 
-    const ids = await valhalla.owned(alice)
+    const nftBalance = await valhalla.erc721BalanceOf(alice)
+    const ids = await valhalla.owned(alice, 0, nftBalance)
     const max = ids.reduce((_max, curr) => (_max > curr ? _max : curr), 0n)
     expect(max - ID_ENCODING_PREFIX).lte(TOTAL_SUPPLY / ONE_ETH)
   })
 
   it('alice burn nft to get SBT and coupon', async () => {
-    const ids = await valhalla.owned(alice)
+    const nftBalance = await valhalla.erc721BalanceOf(alice)
+    const ids = await valhalla.owned(alice, 0, nftBalance)
     const tokenUri = await valhalla.tokenURI(ids[0])
     console.log('Token uri:', tokenUri)
 
@@ -225,7 +230,8 @@ describe('Valhalla', () => {
   })
 
   it('alice burn another nft to get more power', async () => {
-    const ids = await valhalla.owned(alice)
+    const nftBalance = await valhalla.erc721BalanceOf(alice)
+    const ids = await valhalla.owned(alice, 0, nftBalance)
 
     const tx = valhalla.connect(alice).burnNFT(ids[0])
 
