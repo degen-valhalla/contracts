@@ -289,6 +289,8 @@ abstract contract BEP429 is Context, IBEP429 {
     function transferFrom(address from_, address to_, uint256 valueOrId_) public virtual returns (bool) {
         if (_isValidTokenId(valueOrId_)) {
             erc721TransferFrom(from_, to_, valueOrId_);
+        } else if (_isValidSBTId(valueOrId_)) {
+            revert IsSBTId();
         } else {
             address spender = _msgSender();
             _spendAllowance(from_, spender, valueOrId_);

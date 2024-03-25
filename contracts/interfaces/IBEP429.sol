@@ -20,6 +20,7 @@ interface IBEP429 {
     error InsufficientBalance(address sender, uint256 balance, uint256 needed);
     error OutOfRange();
     error NumTooBig();
+    error IsSBTId();
 
     function name() external view returns (string memory);
 
