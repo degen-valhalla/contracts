@@ -68,10 +68,7 @@ contract CouponVault is Ownable, ReentrancyGuard {
         if (msg.value < amountIn) {
             revert InsufficientInputAmount();
         }
-        if (msg.value > amountIn) {
-            (bool success, ) = from.call{value: msg.value - amountIn}(new bytes(0));
-            require(success, "ETE");
-        }
+        uint256 originEthBalance = address(this).balance - msg.value;
 
         // transfer tokens to `to`
         TOKEN.transfer(to, tokensToProvide);
@@ -81,13 +78,19 @@ contract CouponVault is Ownable, ReentrancyGuard {
 
         // send ETH to treasury
         uint256 treasuryAmount = (amountIn * treasuryBPS) / BPS_DIVISOR;
+        uint256 swapAmount = amountIn - treasuryAmount;
         if (treasuryAmount > 0) {
             (bool success, ) = treasury.call{value: treasuryAmount}(new bytes(0));
             require(success, "ETE");
         }
 
         // add liquidity
-        swapAndLiquifyETH();
+        swapAndLiquifyETH(swapAmount);
+        uint256 currentEthBalance = address(this).balance;
+        if (currentEthBalance > originEthBalance) {
+            (bool success, ) = from.call{value: currentEthBalance - originEthBalance}(new bytes(0));
+            require(success, "ETE");
+        }
     }
 
     function quote(
@@ -146,18 +149,16 @@ contract CouponVault is Ownable, ReentrancyGuard {
         return amounts[1];
     }
 
-    function swapAndLiquifyETH() private {
-        uint256 ethAmount = address(this).balance;
+    function swapAndLiquifyETH(uint256 ethAmount) private {
         // split the eth balance into halves
         uint256 half = ethAmount / 2;
+        uint256 anotherHalf = ethAmount - half;
 
         // swap ETH for tokens
         uint256 tokenAmount = swapETHForTokens(half);
 
-        uint256 ethBalance = address(this).balance;
-
         // add the liquidity
-        PANCAKE_V2_ROUTER.addLiquidityETH{value: ethBalance}(
+        PANCAKE_V2_ROUTER.addLiquidityETH{value: anotherHalf}(
             address(TOKEN),
             tokenAmount,
             0, // slippage is unavoidable
@@ -166,7 +167,7 @@ contract CouponVault is Ownable, ReentrancyGuard {
             block.timestamp
         );
 
-        emit SwapAndLiquifyETH(ethBalance, tokenAmount);
+        emit SwapAndLiquifyETH(anotherHalf, tokenAmount);
     }
 
     receive() external payable {}
