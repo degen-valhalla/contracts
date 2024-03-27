@@ -86,12 +86,11 @@ contract StakingPool is Ownable, ReentrancyGuard {
     }
 
     // Update the given pool's reward rate. Can only be called by the owner.
-    function set(uint256 _pid, uint256 _rewardRate, uint256 _tokenId, bool _withUpdate) public onlyOwner {
+    function set(uint256 _pid, uint256 _rewardRate, bool _withUpdate) public onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
         }
         poolInfo[_pid].rewardRate = _rewardRate;
-        poolInfo[_pid].tokenId = _tokenId;
     }
 
     // Update coupon. Can only be called by the owner.

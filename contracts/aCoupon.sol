@@ -55,6 +55,7 @@ contract ACoupon is ERC1155SupplyUpgradeable, OwnableUpgradeable, IACoupon {
     }
 
     function setDiscount(uint256 id, uint256 value) external onlyOwner {
+        require(id > 0, "zero id is not allowed");
         discounts[id] = value;
     }
 

@@ -77,12 +77,18 @@ describe('CouponVault', () => {
 
     const originAmountIn = (await router.getAmountsIn(tokens, [weth9, valhalla]))[0]
 
-    const txBuy = couponVault.connect(alice).buyUsingCoupon(ids, values, amountIn, alice, { value: amountIn })
+    const ethBalance1 = await ethers.provider.getBalance(alice)
+
+    const txBuy = couponVault.connect(alice).buyUsingCoupon(ids, values, alice, { value: amountIn + parseEther('2') })
 
     expect(amountIn).eq(amountInForDirectSwap)
     await expect(txBuy).changeTokenBalance(valhalla, alice, tokens)
-    await expect(txBuy).changeEtherBalance(alice, -amountIn)
     await expect(txBuy).changeTokenBalance(valhalla, couponVault, -tokens)
+
+    const txBuyReceipt = await ethers.provider.getTransactionReceipt((await txBuy).hash)
+    const ethBalance2 = await ethers.provider.getBalance(alice)
+    expect(ethBalance1 - ethBalance2 - txBuyReceipt.fee).lte(amountIn)
+    expect(ethBalance1 - ethBalance2 - txBuyReceipt.fee).gt((amountIn * 95n) / 100n)
 
     const balance1 = await coupon.balanceOf(alice, 1)
     const balance2 = await coupon.balanceOf(alice, 2)

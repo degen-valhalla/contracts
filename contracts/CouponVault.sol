@@ -4,10 +4,11 @@ pragma solidity 0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IUniswapV2Router01} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
 import {IACoupon} from "./interfaces/IACoupon.sol";
 
-contract CouponVault is Ownable {
+contract CouponVault is Ownable, ReentrancyGuard {
     IERC20 public immutable TOKEN;
     IACoupon public immutable COUPON;
 
@@ -23,7 +24,6 @@ contract CouponVault is Ownable {
     error InvalidIdInfo();
     error InsufficientCoupon();
     error InsufficientInputAmount();
-    error ExcessMaxLimit();
 
     event SwapAndLiquifyETH(uint256, uint256);
 
@@ -56,46 +56,41 @@ contract CouponVault is Ownable {
         IERC20(_token).transfer(_to, _amount);
     }
 
-    function buyUsingCoupon(
-        uint256[] memory ids,
-        uint256[] memory values,
-        uint256 maxAmountIn,
-        address to
-    ) external payable {
+    function buyUsingCoupon(uint256[] memory ids, uint256[] memory values, address to) external payable nonReentrant {
         if (ids.length == 0 || ids.length != values.length) {
             revert InvalidIdInfo();
         }
 
         // calculate discounted amount
         address from = _msgSender();
-        (uint256 tokensToPay, , uint256 amountIn) = quote(from, ids, values);
+        (uint256 tokensToProvide, , uint256 amountIn) = quote(from, ids, values);
 
         if (msg.value < amountIn) {
             revert InsufficientInputAmount();
         }
-        if (amountIn > maxAmountIn) {
-            revert ExcessMaxLimit();
-        }
-        if (msg.value > amountIn) {
-            (bool success, ) = from.call{value: msg.value - amountIn}(new bytes(0));
-            require(success, "ETE");
-        }
+        uint256 originEthBalance = address(this).balance - msg.value;
 
         // transfer tokens to `to`
-        TOKEN.transfer(to, tokensToPay);
+        TOKEN.transfer(to, tokensToProvide);
 
         // burn coupons
         COUPON.burnBatch(from, ids, values);
 
         // send ETH to treasury
         uint256 treasuryAmount = (amountIn * treasuryBPS) / BPS_DIVISOR;
+        uint256 swapAmount = amountIn - treasuryAmount;
         if (treasuryAmount > 0) {
             (bool success, ) = treasury.call{value: treasuryAmount}(new bytes(0));
             require(success, "ETE");
         }
 
         // add liquidity
-        swapAndLiquifyETH();
+        swapAndLiquifyETH(swapAmount);
+        uint256 currentEthBalance = address(this).balance;
+        if (currentEthBalance > originEthBalance) {
+            (bool success, ) = from.call{value: currentEthBalance - originEthBalance}(new bytes(0));
+            require(success, "ETE");
+        }
     }
 
     function quote(
@@ -108,7 +103,7 @@ contract CouponVault is Ownable {
         }
 
         // calculate discounted amount
-        uint256 tokensToPay;
+        uint256 tokensToProvide;
         uint256 discountedAmounts;
         uint256 divisor = COUPON.DISCOUNT_DIVISOR();
         for (uint256 i = 0; i < ids.length; ) {
@@ -121,7 +116,7 @@ contract CouponVault is Ownable {
                 revert InsufficientCoupon();
             }
 
-            tokensToPay += UNITS * value;
+            tokensToProvide += UNITS * value;
             discountedAmounts += (UNITS * value * (divisor - COUPON.discounts(id))) / divisor;
 
             unchecked {
@@ -135,7 +130,7 @@ contract CouponVault is Ownable {
         uint256[] memory amountsIn = PANCAKE_V2_ROUTER.getAmountsIn(discountedAmounts, path);
         uint256 amountIn = amountsIn[0];
 
-        return (tokensToPay, discountedAmounts, amountIn);
+        return (tokensToProvide, discountedAmounts, amountIn);
     }
 
     function swapETHForTokens(uint256 ethAmount) private returns (uint256) {
@@ -154,18 +149,16 @@ contract CouponVault is Ownable {
         return amounts[1];
     }
 
-    function swapAndLiquifyETH() private {
-        uint256 ethAmount = address(this).balance;
+    function swapAndLiquifyETH(uint256 ethAmount) private {
         // split the eth balance into halves
         uint256 half = ethAmount / 2;
+        uint256 anotherHalf = ethAmount - half;
 
         // swap ETH for tokens
         uint256 tokenAmount = swapETHForTokens(half);
 
-        uint256 ethBalance = address(this).balance;
-
         // add the liquidity
-        PANCAKE_V2_ROUTER.addLiquidityETH{value: ethBalance}(
+        PANCAKE_V2_ROUTER.addLiquidityETH{value: anotherHalf}(
             address(TOKEN),
             tokenAmount,
             0, // slippage is unavoidable
@@ -174,7 +167,7 @@ contract CouponVault is Ownable {
             block.timestamp
         );
 
-        emit SwapAndLiquifyETH(ethBalance, tokenAmount);
+        emit SwapAndLiquifyETH(anotherHalf, tokenAmount);
     }
 
     receive() external payable {}
